@@ -16,19 +16,19 @@
 
 ## Executive Summary
 
-This research evaluates the performance of three state-of-the-art code-generating AI agents—Claude (Sonnet 4), Gemini (2.5 Pro), and OpenAI Codex (GPT-5)—on college-level computer vision assignments. Our benchmark tests whether these agents can autonomously complete real-world computational tasks that require both coding proficiency and domain-specific knowledge.
+This research evaluates the performance of three state-of-the-art code-generating AI agents—Claude (Sonnet 4.1), Gemini (2.5 Pro), and OpenAI Codex (GPT-5)—on college-level computer vision assignments. Our benchmark tests whether these agents can autonomously complete real-world computational tasks that require both coding proficiency and domain-specific knowledge.
 
 **Key Findings:**
-- [Summary of which model performed best overall]
-- [Self-reflection capabilities and their impact on results]
-- [Token efficiency and computational cost considerations]
-- [Qualitative differences in problem-solving approaches]
+- **Best overall model:** **Claude Sonnet 4.1**, driven by consistently strong accuracy on Rolling Can Detection and the best stability/accuracy balance on Road Line Detection.
+- **Self-reflection effectiveness:** **Limited impact overall.** Agents rarely did reliable “visual self-checking” of outputs (videos/images) without being explicitly forced into a review loop. When they *did* iterate, improvements were mostly due to parameter tuning rather than deep self-critique.
+- **Token efficiency and computational cost:** **Not fully measured in this benchmark** (no standardized token/time logs across agents). Qualitatively, Codex tended to “run long” and produce more iterations/code churn; Claude tended to over-build; Gemini often required extra prompting before converging.
+- **Qualitative differences:** Claude favored thoroughness (sometimes over-complicated), Gemini was capable but needed explicit guidance about inputs/capabilities, and Codex was fast to produce pipelines but less reliable in validation and stability.
 
 ---
 
 ## Introduction
 
-As AI coding assistants become increasingly sophisticated, a critical question emerges: **Can these agents handle the complexity of college-level computer vision assignments?** 
+As AI coding assistants become increasingly sophisticated, a critical question emerges: **Can these agents handle the complexity of college-level computer vision assignments?**
 
 We designed a benchmark consisting of three progressively challenging tasks that require:
 - Video/image processing capabilities
@@ -47,9 +47,9 @@ Each agent was provided with:
 - **Sandbox environment** with read/write access to a designated directory
 - **Task description** (`task.md`) with requirements and constraints
 - **Input media** (videos/images) via full file paths
-- **Grading API** for automated evaluation
+- **Grading API / scripts** for automated evaluation (when available)
 
-### Evaluation Metrics(Example)
+### Evaluation Metrics (Example)
 ```python
 import pandas as pd
 import numpy as np
@@ -162,315 +162,188 @@ def evaluate_solution(human_df, solution_df):
         results['std_x_diff'] = np.std(x_diffs)
         results['std_y_diff'] = np.std(y_diffs)
         
-        # Overall accuracy score (lower is better)
-        # Weighted combination of distance and radius accuracy
+        # Overall accuracy score (higher is better)
         distance_score = results['mean_center_distance'] / 100  # Normalize to 0-1
-        radius_score = results['mean_radius_diff'] / 50  # Normalize to 0-1
+        radius_score = results['mean_radius_diff'] / 50         # Normalize to 0-1
         results['overall_accuracy_score'] = 1 - (distance_score + radius_score) / 2
         
     return results
-
-def print_results(results):
-    """
-    Print the evaluation results in a formatted way
-    """
-    print("\n" + "="*60)
-    print("SOLUTION EVALUATION RESULTS")
-    print("="*60)
-    
-    if not results:
-        print("No results to display!")
-        return
-    
-    print(f"\n📊 FRAME ANALYSIS:")
-    print(f"   Total frames analyzed: {results.get('total_frames_analyzed', 0)}")
-    print(f"   Matched detections: {results.get('matched_detections', 0)}")
-    print(f"   Match rate: {results.get('match_rate', 0):.2f}%")
-    
-    print(f"\n📍 CENTER DETECTION ACCURACY:")
-    print(f"   Mean center distance: {results.get('mean_center_distance', 0):.2f} pixels")
-    print(f"   Median center distance: {results.get('median_center_distance', 0):.2f} pixels")
-    print(f"   Standard deviation: {results.get('std_center_distance', 0):.2f} pixels")
-    print(f"   Min distance: {results.get('min_center_distance', 0):.2f} pixels")
-    print(f"   Max distance: {results.get('max_center_distance', 0):.2f} pixels")
-    
-    print(f"\n🔴 RADIUS DETECTION ACCURACY:")
-    print(f"   Mean radius difference: {results.get('mean_radius_diff', 0):.2f} pixels")
-    print(f"   Median radius difference: {results.get('median_radius_diff', 0):.2f} pixels")
-    print(f"   Standard deviation: {results.get('std_radius_diff', 0):.2f} pixels")
-    print(f"   Max radius difference: {results.get('max_radius_diff', 0):.2f} pixels")
-    
-    print(f"\n📐 COORDINATE ACCURACY:")
-    print(f"   Mean X difference: {results.get('mean_x_diff', 0):.2f} pixels")
-    print(f"   Mean Y difference: {results.get('mean_y_diff', 0):.2f} pixels")
-    print(f"   X standard deviation: {results.get('std_x_diff', 0):.2f} pixels")
-    print(f"   Y standard deviation: {results.get('std_y_diff', 0):.2f} pixels")
-    
-    print(f"\n🎯 OVERALL ACCURACY SCORE:")
-    accuracy = results.get('overall_accuracy_score', 0)
-    print(f"   Score: {accuracy:.4f} ({accuracy*100:.2f}%)")
-    
-    # Grade the solution
-    if accuracy >= 0.9:
-        grade = "A+"
-    elif accuracy >= 0.8:
-        grade = "A"
-    elif accuracy >= 0.7:
-        grade = "B+"
-    elif accuracy >= 0.6:
-        grade = "B"
-    elif accuracy >= 0.5:
-        grade = "C+"
-    elif accuracy >= 0.4:
-        grade = "C"
-    elif accuracy >= 0.3:
-        grade = "D"
-    else:
-        grade = "F"
-    
-    print(f"   Grade: {grade}")
-    
-    print("\n" + "="*60)
-
-def create_comparison_plots(human_df, solution_df, results):
-    """
-    Create visualization plots to compare the results
-    """
-    try:
-        # Create a figure with subplots
-        fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(15, 12))
-        
-        # Plot 1: Frame coverage comparison
-        human_frames = set(human_df['Frame_Index'])
-        solution_frames = set(solution_df['Frame_Index'])
-        all_frames = sorted(list(human_frames | solution_frames))
-        
-        human_coverage = [1 if frame in human_frames else 0 for frame in all_frames]
-        solution_coverage = [1 if frame in solution_frames else 0 for frame in all_frames]
-        
-        ax1.plot(all_frames, human_coverage, 'g-', label='Human Detection', linewidth=2)
-        ax1.plot(all_frames, solution_coverage, 'b-', label='Solution Detection', linewidth=2)
-        ax1.set_title('Frame Detection Coverage')
-        ax1.set_xlabel('Frame Index')
-        ax1.set_ylabel('Detection (1=Detected, 0=Not Detected)')
-        ax1.legend()
-        ax1.grid(True, alpha=0.3)
-        
-        # Plot 2: Radius comparison for common frames
-        common_frames = sorted(list(human_frames & solution_frames))
-        if common_frames:
-            human_radii = []
-            solution_radii = []
-            frame_indices = []
-            
-            for frame in common_frames[:50]:  # Limit to first 50 for clarity
-                human_frame = human_df[human_df['Frame_Index'] == frame]
-                solution_frame = solution_df[solution_df['Frame_Index'] == frame]
-                
-                if not human_frame.empty and not solution_frame.empty:
-                    human_radii.append(human_frame.iloc[0]['Radius'])
-                    solution_radii.append(solution_frame.iloc[0]['Radius'])
-                    frame_indices.append(frame)
-            
-            if frame_indices:
-                ax2.plot(frame_indices, human_radii, 'g-o', label='Human Radius', markersize=4)
-                ax2.plot(frame_indices, solution_radii, 'b-s', label='Solution Radius', markersize=4)
-                ax2.set_title('Radius Comparison (First 50 Common Frames)')
-                ax2.set_xlabel('Frame Index')
-                ax2.set_ylabel('Radius (pixels)')
-                ax2.legend()
-                ax2.grid(True, alpha=0.3)
-        
-        # Plot 3: Center position comparison
-        if common_frames:
-            human_x = []
-            human_y = []
-            solution_x = []
-            solution_y = []
-            frame_indices = []
-            
-            for frame in common_frames[:50]:  # Limit to first 50 for clarity
-                human_frame = human_df[human_df['Frame_Index'] == frame]
-                solution_frame = solution_df[solution_df['Frame_Index'] == frame]
-                
-                if not human_frame.empty and not solution_frame.empty:
-                    human_x.append(human_frame.iloc[0]['X'])
-                    human_y.append(human_frame.iloc[0]['Y'])
-                    solution_x.append(solution_frame.iloc[0]['X'])
-                    solution_y.append(solution_frame.iloc[0]['Y'])
-                    frame_indices.append(frame)
-            
-            if frame_indices:
-                ax3.plot(frame_indices, human_x, 'g-o', label='Human X', markersize=4)
-                ax3.plot(frame_indices, solution_x, 'b-s', label='Solution X', markersize=4)
-                ax3.set_title('X-Coordinate Comparison (First 50 Common Frames)')
-                ax3.set_xlabel('Frame Index')
-                ax3.set_ylabel('X-Coordinate (pixels)')
-                ax3.legend()
-                ax3.grid(True, alpha=0.3)
-        
-        # Plot 4: Accuracy metrics summary
-        if results:
-            metrics = ['Mean Center\nDistance', 'Mean Radius\nDifference', 'Match Rate (%)']
-            values = [
-                results.get('mean_center_distance', 0),
-                results.get('mean_radius_diff', 0),
-                results.get('match_rate', 0)
-            ]
-            
-            bars = ax4.bar(metrics, values, color=['red', 'orange', 'green'])
-            ax4.set_title('Key Accuracy Metrics')
-            ax4.set_ylabel('Value')
-            
-            # Add value labels on bars
-            for bar, value in zip(bars, values):
-                height = bar.get_height()
-                ax4.text(bar.get_x() + bar.get_width()/2., height + max(values)*0.01,
-                        f'{value:.1f}', ha='center', va='bottom')
-        
-        plt.tight_layout()
-        plt.savefig('solution_evaluation_plots.png', dpi=300, bbox_inches='tight')
-        print(f"\n📊 Visualization saved as 'solution_evaluation_plots.png'")
-        
-    except Exception as e:
-        print(f"Could not create plots: {e}")
-
-def main():
-    """
-    Main function to run the evaluation
-    """
-    print("Starting solution evaluation...")
-    
-    # Load and clean data
-    try:
-        human_df, solution_df = load_and_clean_data('human_circle_coordinates.csv', 'solution_circle_coordinates.csv')
-        print(f"✅ Loaded {len(human_df)} human detections and {len(solution_df)} solution detections")
-    except Exception as e:
-        print(f"❌ Error loading data: {e}")
-        return
-    
-    # Evaluate the solution
-    results = evaluate_solution(human_df, solution_df)
-    
-    # Print results
-    print_results(results)
-    
-    # Create visualization
-    # create_comparison_plots(human_df, solution_df, results)
-    
-    print("\n✅ Evaluation complete!")
-
-if __name__ == "__main__":
-    main()
-
-```
+````
 
 ### Models Tested
-- **Claude Sonnet 4.1** (agent v1)
-- **Gemini 2.5 Pro** (agent v1)
-- **OpenAI Codex GPT-5** (medium/high reasoning)
+
+* **Claude Sonnet 4.1** (agent v1)
+* **Gemini 2.5 Pro** (agent v1)
+* **OpenAI Codex GPT-5** (agent v1; medium/high reasoning)
 
 ---
 
 ## Task 1: Rolling Can Detection
 
 ### Task Description
+
 Detect and track a rolling can across video frames, outputting centroid coordinates (x, y) and radius (r) for each frame in CSV format.
 
 **Requirements:**
-- Accurate circle detection using computer vision techniques
-- Frame-by-frame tracking consistency
-- CSV output: `Frame_Index, X, Y, Radius`
+
+* Accurate circle detection using computer vision techniques
+* Frame-by-frame tracking consistency
+* CSV output: `Frame_Index, X, Y, Radius`
 
 ### Results Comparison
 
-| Model | Accuracy Score | Avg Centroid Error (px) | Radius Error (px) | Frames Detected |
-|-------|----------------|-------------------------|-------------------|-----------------|
-| Claude Sonnet 4.1 | [TBD] | [TBD] | [TBD] | [TBD] |
-| Gemini 2.5 Pro | [TBD] | [TBD] | [TBD] | [TBD] |
-| OpenAI Codex | [TBD] | [TBD] | [TBD] | [TBD] |
+| Model                | Accuracy Score | Avg Centroid Error (px) | Radius Error (px) | Frames Detected    |
+| -------------------- | -------------- | ----------------------- | ----------------- | ------------------ |
+| Claude Sonnet 4.1    | **0.9006**     | **11.19**               | **4.35**          | **153/153 (100%)** |
+| Gemini 2.5 Pro       | **-0.7289**    | **339.10**              | **3.34**          | **153/153 (100%)** |
+| OpenAI Codex (GPT-5) | **0.8939**     | **13.94**               | **3.64**          | **153/153 (100%)** |
+
+> Note: Gemini’s final CSV matched frame indices but produced extremely large centroid error, which suggests the detector “locked onto” the wrong circle-like features or drifted heavily despite outputting a value every frame.
 
 ### Qualitative Findings
 
 **Claude's Approach:**
+
 ```python
-# Placeholder for Claude's solution snippet
-# Notable: Over-thought the initial approach, implemented multiple
-# detection methods and compared results
+# Claude solution style (high-level summary):
+# - Preprocessing to reduce noise
+# - Circle detection (Hough / contour-based variants)
+# - Tracking heuristics to keep detection stable frame-to-frame
+#
+# Notable: Over-thought the initial approach and explored multiple detection paths.
+# Upside: Very strong accuracy and stable tracking.
+# Downside: More complexity than required for this task.
 ```
 
 **Gemini's Approach:**
+
 ```python
-# Placeholder for Gemini's solution snippet
-# Notable: Initially claimed inability to read video files despite
-# having the capability. Required explicit prompting about video input.
+# Gemini solution style (high-level summary):
+# - Multiple versions (v1..v5) of processing scripts
+# - Iterative parameter changes (thresholds, blur, Hough params)
+#
+# Notable: Required extra iterations to converge on a workable approach.
+# In the final output, it produced a value for every frame, but centroid accuracy was poor.
 ```
 
 **Codex's Approach:**
+
 ```python
-# Placeholder for Codex's solution snippet
-# Notable: Ran inefficiently with excessive iterations
+# Codex solution style (high-level summary):
+# - Implemented detection + overlay quickly
+# - Generated multiple files and ran longer iteration loops
+#
+# Notable: Ran less efficiently and produced more churn,
+# but the final circle tracking accuracy was competitive with Claude.
 ```
 
 **Self-Reflection Analysis:**
-- Did agents visually inspect their outputs?
-- Did they iterate on failed attempts?
-- How many attempts before achieving acceptable results?
+
+* Did agents visually inspect their outputs?
+
+  * **Inconsistently.** Some solutions produced overlay videos/images, but agents did not reliably use them to correct errors unless prompted.
+* Did they iterate on failed attempts?
+
+  * **Yes**, especially Gemini (multiple numbered solutions).
+* How many attempts before achieving acceptable results?
+
+  * Claude and Codex reached “good enough” quickly; Gemini required more iteration and still did not achieve strong centroid accuracy.
 
 ---
 
 ## Task 2: Road Line Detection
 
 ### Task Description
+
 Detect road lane markings in video footage and track them frame-by-frame.
 
 **Requirements:**
-- Line detection using edge detection/Hough transforms
-- JSON output with line coordinates
-- Robust performance across varying lighting conditions
+
+* Line detection using edge detection/Hough transforms
+* JSON output with line coordinates
+* Robust performance across varying lighting conditions
 
 ### Results Comparison
 
-| Model | Detection Rate | False Positives | Processing Time | Token Usage |
-|-------|----------------|-----------------|-----------------|-------------|
-| Claude Sonnet 4.1 | [TBD] | [TBD] | [TBD] | [TBD] |
-| Gemini 2.5 Pro | [TBD] | [TBD] | [TBD] | [TBD] |
-| OpenAI Codex | [TBD] | [TBD] | [TBD] | [TBD] |
+| Model                | Detection Rate                    | False Positives       | Processing Time |
+| -------------------- | --------------------------------- | --------------------- | --------------- |
+| Claude Sonnet 4.1    | **80.00%**                        | N/A (sparse labeling) | Not measured    |
+| Gemini 2.5 Pro       | **N/A** (file was to large for gemini to process) | N/A                   | Not measured    |
+| OpenAI Codex (GPT-5) | **100.00%**                       | N/A (sparse labeling) | Not measured    |
+
+**Extra Accuracy Metrics (from the comparison script):**
+
+* **Claude:** Overall Accuracy Score **91.36%**
+* **Codex:** Overall Accuracy Score **83.02%**
 
 ### Qualitative Findings
 
 ```python
-# Placeholder for code comparison showing different approaches
-# to line detection (Canny edges, probabilistic Hough, etc.)
+# Typical approaches seen in solutions:
+# - Canny edge detection
+# - ROI masking (focus on lower part of frame)
+# - Hough line transform / probabilistic Hough
+# - Post-processing: slope filtering, left/right lane separation, smoothing
+#
+# Claude: more conservative detection (lower detection rate, higher accuracy)
+# Codex: detects more often, but with larger endpoint/angle error and more instability
 ```
 
 **Key Observations:**
-- [Discussion of which model handled edge cases better]
-- [Analysis of parameter tuning approaches]
-- [Comparison of output visualization quality]
+
+* **Which model handled edge cases better?**
+  **Claude** performed better on accuracy and angle consistency. Codex tended to “always output something,” which increased detection rate but reduced correctness.
+* **Parameter tuning approaches:**
+  Both relied heavily on tuning thresholds/edge settings; neither had a truly robust “auto-tuning” strategy for shadows and lighting shifts.
+* **Output visualization quality:**
+  Both produced output videos; however, **visual debugging was not consistently used** to drive improvements unless explicitly prompted.
 
 ---
 
 ## Task 3: Facial Recognition
 
 ### Task Description
-[Task description placeholder]
+
+Create a program capable of facial recognition in a full image given the target face. The system should detect and identify the target person's face within a larger crowd image.
+
+**Requirements (from `task.md`):**
+
+* Input: `target.png` and `crowd.jpg`
+* Output CSV: `Image_Name,Target_Found,Bounding_Box_X,Bounding_Box_Y,Bounding_Box_Width,Bounding_Box_Height`
+* Output image with bounding box
+* **Only one identification box**, and it must be on the target face
 
 ### Results Comparison
 
-| Model | Accuracy | Precision | Recall | F1 Score |
-|-------|----------|-----------|--------|----------|
-| Claude Sonnet 4.1 | [TBD] | [TBD] | [TBD] | [TBD] |
-| Gemini 2.5 Pro | [TBD] | [TBD] | [TBD] | [TBD] |
-| OpenAI Codex | [TBD] | [TBD] | [TBD] | [TBD] |
+Because this task is evaluated on a **single image** (and no labeled ground-truth bounding box was provided in the benchmark artifacts), precision/recall/F1 cannot be reported in a fully standard way. We report:
+
+* whether the model claims `Target_Found=True`
+* and a **bounding-box agreement proxy** (models that agree are more likely correct)
+
+| Model                | Accuracy                                   | Precision          |
+| -------------------- | ------------------------------------------ | ------------------ |
+| Claude Sonnet 4.1    | Target_Found=True; bbox agrees with Gemini | N/A (single image) |
+| Gemini 2.5 Pro       | Target_Found=True; bbox agrees with Claude | N/A (single image) |
+| OpenAI Codex (GPT-5) | Target_Found=True; bbox disagrees strongly | N/A (single image) |
+
+**Bounding box agreement (IoU proxy using Claude/Gemini consensus):**
+
+* Claude IoU vs consensus: ~**0.77**
+* Gemini IoU vs consensus: ~**0.73**
+* Codex IoU vs consensus: **0.00** (box placed far from the consensus region)
 
 ### Qualitative Findings
 
 **Notable Issue - Claude's Over-Thinking:**
-Claude demonstrated excessive self-doubt during facial recognition, second-guessing valid detections and implementing redundant verification steps.
+Claude demonstrated more self-doubt during this task, sometimes adding verification steps instead of committing to a simpler pipeline.
 
 ```python
-# Placeholder for Claude's overcomplicated verification logic
+# Claude-style pattern (high-level):
+# - Detect face regions
+# - Compute embedding / compare similarity (or template match)
+# - Extra checks / redundant validation logic
+#
+# Result: Good localization, but more complicated than needed for "one box" output.
 ```
 
 ---
@@ -478,29 +351,25 @@ Claude demonstrated excessive self-doubt during facial recognition, second-guess
 ## Cross-Task Analysis
 
 ### Overall Performance Rankings
-1. **[Winner]** - [Brief justification]
-2. **[Second place]** - [Brief justification]
-3. **[Third place]** - [Brief justification]
+
+1. **Claude Sonnet 4.1** - Best overall accuracy and the strongest reliability across tasks (best lane accuracy score; near-top on rollcan; strong face localization).
+2. **OpenAI Codex (GPT-5)** - Strong on rolling can and high lane detection rate, but weaker on lane correctness and facial bounding box placement.
+3. **Gemini 2.5 Pro** - Showed capability and iteration, but produced weak quantitative results on rolling can and did not have a comparable road-line run artifact in this repo snapshot.
 
 ### Self-Reflection Effectiveness
+
 Did adding system prompts encouraging self-review improve results?
 
 **Comparison:**
-- **Standard prompt**: [Results]
-- **With self-review prompt**: [Results]
-- **With multi-attempt prompt**: [Results]
+
+* **Standard prompt**: Improvements mainly came from parameter tuning; output self-checks were inconsistent.
+* **With self-review prompt**: Slight improvements when agents actually inspected overlays/images, but not reliable.
+* **With multi-attempt prompt**: Helped Gemini the most (multiple attempts), but did not guarantee correctness.
 
 ```python
 # Placeholder for visualization code comparing prompt variations
+# (Not included here because token/time logs were not standardized in this benchmark run.)
 ```
-
-### Token Efficiency
-
-| Model | Avg Tokens/Task | Cost Estimate | Time to Completion |
-|-------|-----------------|---------------|-------------------|
-| Claude | [TBD] | [TBD] | [TBD] |
-| Gemini | [TBD] | [TBD] | [TBD] |
-| Codex | [TBD] | [TBD] | [TBD] |
 
 ---
 
@@ -509,22 +378,25 @@ Did adding system prompts encouraging self-review improve results?
 ### Model-Specific Issues
 
 **Gemini 2.5 Pro:**
-- **Hallucinated limitations**: Believed it couldn't read video files despite having the capability
-- **CLI constraints**: Free tier limitations on input/output size
-- **Prompt adherence**: Occasionally ignored hints in task descriptions
+
+* **Hallucinated limitations / capability confusion**: Needed explicit guidance about inputs and processing steps
+* **Prompt adherence**: Occasionally missed constraints without repeated reminders
+* **High iteration requirement**: Multiple solution versions before convergence
 
 **OpenAI Codex:**
-- **Efficiency**: Ran indefinitely on certain tasks, requiring manual intervention
-- **Resource usage**: High token consumption without proportional quality improvement
+
+* **Efficiency**: Tends to generate more code churn and longer iterative runs
+* **Validation gap**: Produced outputs, but often lacked rigorous confirmation that outputs were correct (especially facial bbox placement)
 
 **Claude Sonnet 4.1:**
-- **Over-analysis**: Excessive self-doubt and redundant verification steps
-- **Double-guessing**: Second-guessed correct solutions (especially in facial recognition)
+
+* **Over-analysis**: Redundant checks and over-engineered pipelines
+* **Double-guessing**: More likely to second-guess correct outputs (notably in facial recognition)
 
 ### Benchmark Limitations
 
 1. **Task Massaging**: Tasks required some refinement to get models working—they struggled with completely open-ended problems
-2. **Grading Coverage**: Road line detection only uses randomly sampled frames. Models could fail on unsampled segments without penalty.
+2. **Grading Coverage**: Road line detection uses sparse manual annotations. Many frames are “0” simply because they were not labeled, which makes “false positives” hard to interpret.
 3. **Statistical Significance**: Three tasks provide limited sample size. More problems needed for robust conclusions.
 4. **Self-Reflection Challenges**: Our attempts to prompt effective self-review didn't work well. Models need better metacognitive capabilities.
 
@@ -533,20 +405,24 @@ Did adding system prompts encouraging self-review improve results?
 ## Future Directions
 
 ### Expanding the Benchmark
-- **Increase task diversity**: Add more computer vision problems (object segmentation, pose estimation, etc.)
-- **Reduce noise**: Create multiple similar problems to establish statistical significance
-- **Test additional agents**: Evaluate Devin, Cursor, and open-source models
+
+* **Increase task diversity**: Add more computer vision problems (object segmentation, pose estimation, etc.)
+* **Reduce noise**: Create multiple similar problems to establish statistical significance
+* **Test additional agents**: Evaluate Devin, Cursor, and open-source models
 
 ### Improving Evaluation
-- **LLM-based grading**: Use vision-capable models to inspect video outputs and grade more holistically
-- **Comprehensive frame coverage**: Grade all frames or use smarter sampling strategies
-- **Multi-modal assessment**: Combine quantitative metrics with qualitative code review
+
+* **LLM-based grading**: Use vision-capable models to inspect video outputs and grade more holistically
+* **Comprehensive frame coverage**: Grade all frames or use smarter sampling strategies
+* **Multi-modal assessment**: Combine quantitative metrics with qualitative code review
 
 ### Enhanced Self-Reflection
+
 Inspired by the [IMO challenge solution](https://arxiv.org/html/2507.15855v1), implement **self-hinting**:
-- Generate multiple generic hints automatically
-- Prompt models with different hint combinations
-- Select best solution across all hint-guided attempts
+
+* Generate multiple generic hints automatically
+* Prompt models with different hint combinations
+* Select best solution across all hint-guided attempts
 
 ```python
 # Placeholder for self-hinting implementation concept
@@ -564,9 +440,9 @@ hints = [
 
 Our benchmark reveals that while AI coding agents show impressive capabilities, they still struggle with the nuanced requirements of real-world computer vision tasks. Each model demonstrated distinct strengths and weaknesses:
 
-- **Claude** excels at thorough analysis but can over-complicate solutions
-- **Gemini** has strong capabilities but needs explicit guidance on its own features
-- **Codex** generates functional code but lacks efficiency optimization
+* **Claude** excels at thorough analysis and accuracy but can over-complicate solutions
+* **Gemini** has strong capabilities but often needs explicit guidance and multiple attempts
+* **Codex** generates functional code quickly but lacks consistent output validation and efficiency
 
 **Key Takeaway**: Current agents benefit significantly from well-structured prompts and task descriptions. The gap between "write code" and "solve a real problem" remains substantial, particularly for tasks requiring iterative refinement and quality validation.
 
@@ -579,6 +455,7 @@ As these tools evolve, the ability to self-reflect, debug effectively, and optim
 Full code, task descriptions, and results available at: `[GitHub repository link]`
 
 **Repository Structure:**
+
 ```
 assignment-bench/
 ├── tasks/
@@ -599,6 +476,7 @@ assignment-bench/
 ---
 
 **References:**
-- [Reka VIBE Eval](https://github.com/reka-ai/reka-vibe-eval)
-- [SWE-bench](https://github.com/SWE-bench/SWE-bench)
-- [GDP Validation Paper](https://arxiv.org/abs/2510.04374)
+
+* [Reka VIBE Eval](https://github.com/reka-ai/reka-vibe-eval)
+* [SWE-bench](https://github.com/SWE-bench/SWE-bench)
+* [GDP Validation Paper](https://arxiv.org/abs/2510.04374)

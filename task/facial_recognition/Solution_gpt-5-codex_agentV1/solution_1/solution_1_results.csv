@@ -1,0 +1,2 @@
+Image_Name,Target_Found,Bounding_Box_X,Bounding_Box_Y,Bounding_Box_Width,Bounding_Box_Height,Confidence
+crowd.jpg,True,292,159,46,46,0.2578

@@ -1,0 +1,4 @@
+﻿Result: Target identified in crowd.jpg with confidence score 0.258.
+Bounding box: x=292, y=159, width=46, height=46.
+Observations: The cascade detected a single face in the scene, matching the provided target when normalized cross-correlation was applied. Lighting is consistent, so the match appears visually accurate with minimal background noise.
+Next steps: For harder examples consider augmenting the detector with additional cascades or embedding-based matching to improve robustness to pose changes.

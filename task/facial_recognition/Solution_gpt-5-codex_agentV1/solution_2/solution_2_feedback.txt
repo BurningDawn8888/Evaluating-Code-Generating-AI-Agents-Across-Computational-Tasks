@@ -1,0 +1,4 @@
+﻿Result: Target successfully identified at x=110, y=115, width=29, height=29 in crowd.jpg with combined match score 0.741.
+Confidence drivers: 35/123 SIFT matches passing Lowe ratio test (0.285) and high normalized cross-correlation.
+Visual check: Bounding box aligns with the target's face (center-left of the crowd) rather than other similar bearded individuals.
+Next steps: For additional resilience, consider blending SIFT matching with modern embedding-based verification (e.g., FaceNet) when compute permits.

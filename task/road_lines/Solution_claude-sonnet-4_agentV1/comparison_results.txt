@@ -1,0 +1,17 @@
+ROAD LINE TRACKING - DETAILED COMPARISON RESULTS
+================================================================================
+
+Detection Rate: 80.00%
+Overall Accuracy Score: 91.36%
+Overall Margin of Error: 8.64%
+
+Left Line Accuracy: 93.27%
+Right Line Accuracy: 89.45%
+
+Average Endpoint Error (Left): 109.87 pixels
+Average Endpoint Error (Right): 177.03 pixels
+
+Average Angular Error (Left): 4.48 degrees
+Average Angular Error (Right): 6.35 degrees
+
+Overall Grade: FAIR

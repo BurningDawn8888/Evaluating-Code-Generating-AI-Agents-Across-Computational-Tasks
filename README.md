@@ -268,7 +268,7 @@ Detect road lane markings in video footage and track them frame-by-frame.
 | Model                | Detection Rate                    | False Positives       | Processing Time |
 | -------------------- | --------------------------------- | --------------------- | --------------- |
 | Claude Sonnet 4.1    | **80.00%**                        | N/A (sparse labeling) | Not measured    |
-| Gemini 2.5 Pro       | **N/A** (file was to large for gemini to process) | N/A                   | Not measured    |
+| Gemini 2.5 Pro       | **N/A** (Video file was too large for gemini to process) | N/A                   | Not measured    |
 | OpenAI Codex (GPT-5) | **100.00%**                       | N/A (sparse labeling) | Not measured    |
 
 **Extra Accuracy Metrics (from the comparison script):**

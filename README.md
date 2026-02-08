@@ -462,14 +462,14 @@ assignment-bench/
 │   ├── rolling_can/
 │   │   ├── task.md
 │   │   ├── rollcan.mp4
-│   │   └── human_circle_coordinates.csv
+│   │   ├── human_circle_coordinates.csv
+│   │   ├── solutions/
+│   │   │   ├── claude_sonnet4.1_agentv1/
+│   │   │   ├── gemini2.5_agentv1/
+│   │   │   └── codex_gpt5/
+│   │   └── grade.py
 │   ├── road_lines/
 │   └── facial_recognition/
-├── solutions/
-│   ├── claude_sonnet4.1_agentv1/
-│   ├── gemini2.5_agentv1/
-│   └── codex_gpt5/
-├── grade.py
 └── README.md
 ```
 

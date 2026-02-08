@@ -1,0 +1,2 @@
+Image_Name,Target_Found,Bounding_Box_X,Bounding_Box_Y,Bounding_Box_Width,Bounding_Box_Height
+crowd.jpg,True,293,166,36,36
